@@ -1,2 +1,3 @@
-require('./angular-animate');
-module.exports = 'ngAnimate';
+import './angular-animate.js';
+
+export default window.ngAnimate;

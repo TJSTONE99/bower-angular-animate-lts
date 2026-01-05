@@ -1,9 +1,62 @@
-/**
- * @license AngularJS v1.8.3
- * (c) 2010-2020 Google LLC. http://angularjs.org
- * License: MIT
- */
-(function(window, angular) {'use strict';
+((window, angular) => {
+'use strict';
+
+/** @this */
+var $$AnimateCacheProvider = function() {
+
+  var KEY = '$$ngAnimateParentKey';
+  var parentCounter = 0;
+  var cache = Object.create(null);
+
+  this.$get = [function() {
+    return {
+      cacheKey: function(node, method, addClass, removeClass) {
+        var parentNode = node.parentNode;
+        var parentID = parentNode[KEY] || (parentNode[KEY] = ++parentCounter);
+        var parts = [parentID, method, node.getAttribute('class')];
+        if (addClass) {
+          parts.push(addClass);
+        }
+        if (removeClass) {
+          parts.push(removeClass);
+        }
+        return parts.join(' ');
+      },
+
+      containsCachedAnimationWithoutDuration: function(key) {
+        var entry = cache[key];
+
+        // nothing cached, so go ahead and animate
+        // otherwise it should be a valid animation
+        return (entry && !entry.isValid) || false;
+      },
+
+      flush: function() {
+        cache = Object.create(null);
+      },
+
+      count: function(key) {
+        var entry = cache[key];
+        return entry ? entry.total : 0;
+      },
+
+      get: function(key) {
+        var entry = cache[key];
+        return entry && entry.value;
+      },
+
+      put: function(key, value, isValid) {
+        if (!cache[key]) {
+          cache[key] = { total: 1, value: value, isValid: isValid };
+        } else {
+          cache[key].total++;
+          cache[key].value = value;
+        }
+      }
+    };
+  }];
+};
+'use strict';
 
 var ELEMENT_NODE = 1;
 var COMMENT_NODE = 8;
@@ -363,6 +416,7 @@ var helpers = {
     return [TRANSITION_DELAY_PROP, value];
   }
 };
+'use strict';
 
 var $$rAFSchedulerFactory = ['$$rAF', function($$rAF) {
   var queue, cancelFn;
@@ -412,6 +466,7 @@ var $$rAFSchedulerFactory = ['$$rAF', function($$rAF) {
     }
   }
 }];
+'use strict';
 
 /**
  * @ngdoc directive
@@ -511,6 +566,7 @@ var $$AnimateChildrenDirective = ['$interpolate', function($interpolate) {
     }
   };
 }];
+'use strict';
 
 /* exported $AnimateCssProvider */
 
@@ -528,7 +584,7 @@ var ANIMATE_TIMER_KEY = '$$animateCss';
  * directives to create more complex animations that can be purely driven using CSS code.
  *
  * Note that only browsers that support CSS transitions and/or keyframe animations are capable of
- * rendering animations triggered via `$animateCss` (bad news for IE9 and lower).
+ * rendering animations triggered via `$animateCss`.
  *
  * ## General Use
  * Once again, `$animateCss` is designed to be used inside of a registered JavaScript animation that
@@ -1500,6 +1556,7 @@ var $AnimateCssProvider = ['$animateProvider', /** @this */ function($animatePro
     };
   }];
 }];
+'use strict';
 
 var $$AnimateCssDriverProvider = ['$$animationProvider', /** @this */ function($$animationProvider) {
   $$animationProvider.drivers.push('$$animateCssDriver');
@@ -1766,297 +1823,299 @@ var $$AnimateCssDriverProvider = ['$$animationProvider', /** @this */ function($
     }
   }];
 }];
+'use strict';
 
 // TODO(matsko): use caching here to speed things up for detection
 // TODO(matsko): add documentation
 //  by the time...
 
-var $$AnimateJsProvider = ['$animateProvider', /** @this */ function($animateProvider) {
+var $$AnimateJsProvider = ['$animateProvider', /** @this */ function ($animateProvider) {
   this.$get = ['$injector', '$$AnimateRunner', '$$jqLite',
-       function($injector,   $$AnimateRunner,   $$jqLite) {
+    function ($injector, $$AnimateRunner, $$jqLite) {
 
-    var applyAnimationClasses = applyAnimationClassesFactory($$jqLite);
-         // $animateJs(element, 'enter');
-    return function(element, event, classes, options) {
-      var animationClosed = false;
+      var applyAnimationClasses = applyAnimationClassesFactory($$jqLite);
+      // $animateJs(element, 'enter');
+      return function (element, event, classes, options) {
+        var animationClosed = false;
 
-      // the `classes` argument is optional and if it is not used
-      // then the classes will be resolved from the element's className
-      // property as well as options.addClass/options.removeClass.
-      if (arguments.length === 3 && isObject(classes)) {
-        options = classes;
-        classes = null;
-      }
-
-      options = prepareAnimationOptions(options);
-      if (!classes) {
-        classes = element.attr('class') || '';
-        if (options.addClass) {
-          classes += ' ' + options.addClass;
-        }
-        if (options.removeClass) {
-          classes += ' ' + options.removeClass;
-        }
-      }
-
-      var classesToAdd = options.addClass;
-      var classesToRemove = options.removeClass;
-
-      // the lookupAnimations function returns a series of animation objects that are
-      // matched up with one or more of the CSS classes. These animation objects are
-      // defined via the module.animation factory function. If nothing is detected then
-      // we don't return anything which then makes $animation query the next driver.
-      var animations = lookupAnimations(classes);
-      var before, after;
-      if (animations.length) {
-        var afterFn, beforeFn;
-        if (event === 'leave') {
-          beforeFn = 'leave';
-          afterFn = 'afterLeave'; // TODO(matsko): get rid of this
-        } else {
-          beforeFn = 'before' + event.charAt(0).toUpperCase() + event.substr(1);
-          afterFn = event;
+        // the `classes` argument is optional and if it is not used
+        // then the classes will be resolved from the element's className
+        // property as well as options.addClass/options.removeClass.
+        if (arguments.length === 3 && isObject(classes)) {
+          options = classes;
+          classes = null;
         }
 
-        if (event !== 'enter' && event !== 'move') {
-          before = packageAnimations(element, event, options, animations, beforeFn);
+        options = prepareAnimationOptions(options);
+        if (!classes) {
+          classes = element.attr('class') || '';
+          if (options.addClass) {
+            classes += ' ' + options.addClass;
+          }
+          if (options.removeClass) {
+            classes += ' ' + options.removeClass;
+          }
         }
-        after  = packageAnimations(element, event, options, animations, afterFn);
-      }
 
-      // no matching animations
-      if (!before && !after) return;
+        var classesToAdd = options.addClass;
+        var classesToRemove = options.removeClass;
 
-      function applyOptions() {
-        options.domOperation();
-        applyAnimationClasses(element, options);
-      }
-
-      function close() {
-        animationClosed = true;
-        applyOptions();
-        applyAnimationStyles(element, options);
-      }
-
-      var runner;
-
-      return {
-        $$willAnimate: true,
-        end: function() {
-          if (runner) {
-            runner.end();
+        // the lookupAnimations function returns a series of animation objects that are
+        // matched up with one or more of the CSS classes. These animation objects are
+        // defined via the module.animation factory function. If nothing is detected then
+        // we don't return anything which then makes $animation query the next driver.
+        var animations = lookupAnimations(classes);
+        var before, after;
+        if (animations.length) {
+          var afterFn, beforeFn;
+          if (event === 'leave') {
+            beforeFn = 'leave';
+            afterFn = 'afterLeave'; // TODO(matsko): get rid of this
           } else {
-            close();
-            runner = new $$AnimateRunner();
-            runner.complete(true);
-          }
-          return runner;
-        },
-        start: function() {
-          if (runner) {
-            return runner;
+            beforeFn = 'before' + event.charAt(0).toUpperCase() + event.substr(1);
+            afterFn = event;
           }
 
-          runner = new $$AnimateRunner();
-          var closeActiveAnimations;
-          var chain = [];
-
-          if (before) {
-            chain.push(function(fn) {
-              closeActiveAnimations = before(fn);
-            });
+          if (event !== 'enter' && event !== 'move') {
+            before = packageAnimations(element, event, options, animations, beforeFn);
           }
+          after = packageAnimations(element, event, options, animations, afterFn);
+        }
 
-          if (chain.length) {
-            chain.push(function(fn) {
-              applyOptions();
-              fn(true);
-            });
-          } else {
-            applyOptions();
-          }
+        // no matching animations
+        if (!before && !after) return;
 
-          if (after) {
-            chain.push(function(fn) {
-              closeActiveAnimations = after(fn);
-            });
-          }
+        function applyOptions() {
+          options.domOperation();
+          applyAnimationClasses(element, options);
+        }
 
-          runner.setHost({
-            end: function() {
-              endAnimations();
-            },
-            cancel: function() {
-              endAnimations(true);
+        function close() {
+          animationClosed = true;
+          applyOptions();
+          applyAnimationStyles(element, options);
+        }
+
+        var runner;
+
+        return {
+          $$willAnimate: true,
+          end: function () {
+            if (runner) {
+              runner.end();
+            } else {
+              close();
+              runner = new $$AnimateRunner();
+              runner.complete(true);
             }
+            return runner;
+          },
+          start: function () {
+            if (runner) {
+              return runner;
+            }
+
+            runner = new $$AnimateRunner();
+            var closeActiveAnimations;
+            var chain = [];
+
+            if (before) {
+              chain.push(function (fn) {
+                closeActiveAnimations = before(fn);
+              });
+            }
+
+            if (chain.length) {
+              chain.push(function (fn) {
+                applyOptions();
+                fn(true);
+              });
+            } else {
+              applyOptions();
+            }
+
+            if (after) {
+              chain.push(function (fn) {
+                closeActiveAnimations = after(fn);
+              });
+            }
+
+            runner.setHost({
+              end: function () {
+                endAnimations();
+              },
+              cancel: function () {
+                endAnimations(true);
+              }
+            });
+
+            $$AnimateRunner.chain(chain, onComplete);
+            return runner;
+
+            function onComplete(success) {
+              close(success);
+              runner.complete(success);
+            }
+
+            function endAnimations(cancelled) {
+              if (!animationClosed) {
+                (closeActiveAnimations || noop)(cancelled);
+                onComplete(cancelled);
+              }
+            }
+          }
+        };
+
+        function executeAnimationFn(fn, element, event, options, onDone) {
+          var args;
+          switch (event) {
+            case 'animate':
+              args = [element, options.from, options.to, onDone];
+              break;
+
+            case 'setClass':
+              args = [element, classesToAdd, classesToRemove, onDone];
+              break;
+
+            case 'addClass':
+              args = [element, classesToAdd, onDone];
+              break;
+
+            case 'removeClass':
+              args = [element, classesToRemove, onDone];
+              break;
+
+            default:
+              args = [element, onDone];
+              break;
+          }
+
+          args.push(options);
+
+          var value = fn.apply(fn, args);
+          if (value) {
+            if (isFunction(value.start)) {
+              value = value.start();
+            }
+
+            if (value instanceof $$AnimateRunner) {
+              value.done(onDone);
+            } else if (isFunction(value)) {
+              // optional onEnd / onCancel callback
+              return value;
+            }
+          }
+
+          return noop;
+        }
+
+        function groupEventedAnimations(element, event, options, animations, fnName) {
+          var operations = [];
+          forEach(animations, function (ani) {
+            var animation = ani[fnName];
+            if (!animation) return;
+
+            // note that all of these animations will run in parallel
+            operations.push(function () {
+              var runner;
+              var endProgressCb;
+
+              var resolved = false;
+              var onAnimationComplete = function (rejected) {
+                if (!resolved) {
+                  resolved = true;
+                  (endProgressCb || noop)(rejected);
+                  runner.complete(!rejected);
+                }
+              };
+
+              runner = new $$AnimateRunner({
+                end: function () {
+                  onAnimationComplete();
+                },
+                cancel: function () {
+                  onAnimationComplete(true);
+                }
+              });
+
+              endProgressCb = executeAnimationFn(animation, element, event, options, function (result) {
+                var cancelled = result === false;
+                onAnimationComplete(cancelled);
+              });
+
+              return runner;
+            });
           });
 
-          $$AnimateRunner.chain(chain, onComplete);
-          return runner;
+          return operations;
+        }
 
-          function onComplete(success) {
-            close(success);
-            runner.complete(success);
-          }
+        function packageAnimations(element, event, options, animations, fnName) {
+          var operations = groupEventedAnimations(element, event, options, animations, fnName);
+          if (operations.length === 0) {
+            var a, b;
+            if (fnName === 'beforeSetClass') {
+              a = groupEventedAnimations(element, 'removeClass', options, animations, 'beforeRemoveClass');
+              b = groupEventedAnimations(element, 'addClass', options, animations, 'beforeAddClass');
+            } else if (fnName === 'setClass') {
+              a = groupEventedAnimations(element, 'removeClass', options, animations, 'removeClass');
+              b = groupEventedAnimations(element, 'addClass', options, animations, 'addClass');
+            }
 
-          function endAnimations(cancelled) {
-            if (!animationClosed) {
-              (closeActiveAnimations || noop)(cancelled);
-              onComplete(cancelled);
+            if (a) {
+              operations = operations.concat(a);
+            }
+            if (b) {
+              operations = operations.concat(b);
             }
           }
+
+          if (operations.length === 0) return;
+
+          // TODO(matsko): add documentation
+          return function startAnimation(callback) {
+            var runners = [];
+            if (operations.length) {
+              forEach(operations, function (animateFn) {
+                runners.push(animateFn());
+              });
+            }
+
+            if (runners.length) {
+              $$AnimateRunner.all(runners, callback);
+            } else {
+              callback();
+            }
+
+            return function endFn(reject) {
+              forEach(runners, function (runner) {
+                if (reject) {
+                  runner.cancel();
+                } else {
+                  runner.end();
+                }
+              });
+            };
+          };
         }
       };
 
-      function executeAnimationFn(fn, element, event, options, onDone) {
-        var args;
-        switch (event) {
-          case 'animate':
-            args = [element, options.from, options.to, onDone];
-            break;
-
-          case 'setClass':
-            args = [element, classesToAdd, classesToRemove, onDone];
-            break;
-
-          case 'addClass':
-            args = [element, classesToAdd, onDone];
-            break;
-
-          case 'removeClass':
-            args = [element, classesToRemove, onDone];
-            break;
-
-          default:
-            args = [element, onDone];
-            break;
-        }
-
-        args.push(options);
-
-        var value = fn.apply(fn, args);
-        if (value) {
-          if (isFunction(value.start)) {
-            value = value.start();
-          }
-
-          if (value instanceof $$AnimateRunner) {
-            value.done(onDone);
-          } else if (isFunction(value)) {
-            // optional onEnd / onCancel callback
-            return value;
-          }
-        }
-
-        return noop;
-      }
-
-      function groupEventedAnimations(element, event, options, animations, fnName) {
-        var operations = [];
-        forEach(animations, function(ani) {
-          var animation = ani[fnName];
-          if (!animation) return;
-
-          // note that all of these animations will run in parallel
-          operations.push(function() {
-            var runner;
-            var endProgressCb;
-
-            var resolved = false;
-            var onAnimationComplete = function(rejected) {
-              if (!resolved) {
-                resolved = true;
-                (endProgressCb || noop)(rejected);
-                runner.complete(!rejected);
-              }
-            };
-
-            runner = new $$AnimateRunner({
-              end: function() {
-                onAnimationComplete();
-              },
-              cancel: function() {
-                onAnimationComplete(true);
-              }
-            });
-
-            endProgressCb = executeAnimationFn(animation, element, event, options, function(result) {
-              var cancelled = result === false;
-              onAnimationComplete(cancelled);
-            });
-
-            return runner;
-          });
-        });
-
-        return operations;
-      }
-
-      function packageAnimations(element, event, options, animations, fnName) {
-        var operations = groupEventedAnimations(element, event, options, animations, fnName);
-        if (operations.length === 0) {
-          var a, b;
-          if (fnName === 'beforeSetClass') {
-            a = groupEventedAnimations(element, 'removeClass', options, animations, 'beforeRemoveClass');
-            b = groupEventedAnimations(element, 'addClass', options, animations, 'beforeAddClass');
-          } else if (fnName === 'setClass') {
-            a = groupEventedAnimations(element, 'removeClass', options, animations, 'removeClass');
-            b = groupEventedAnimations(element, 'addClass', options, animations, 'addClass');
-          }
-
-          if (a) {
-            operations = operations.concat(a);
-          }
-          if (b) {
-            operations = operations.concat(b);
-          }
-        }
-
-        if (operations.length === 0) return;
-
-        // TODO(matsko): add documentation
-        return function startAnimation(callback) {
-          var runners = [];
-          if (operations.length) {
-            forEach(operations, function(animateFn) {
-              runners.push(animateFn());
-            });
-          }
-
-          if (runners.length) {
-            $$AnimateRunner.all(runners, callback);
-          }  else {
-            callback();
-          }
-
-          return function endFn(reject) {
-            forEach(runners, function(runner) {
-              if (reject) {
-                runner.cancel();
-              } else {
-                runner.end();
-              }
-            });
-          };
-        };
-      }
-    };
-
-    function lookupAnimations(classes) {
-      classes = isArray(classes) ? classes : classes.split(' ');
-      var matches = [], flagMap = {};
-      for (var i = 0; i < classes.length; i++) {
-        var klass = classes[i],
+      function lookupAnimations(classes) {
+        classes = isArray(classes) ? classes : classes.split(' ');
+        var matches = [], flagMap = {};
+        for (var i = 0; i < classes.length; i++) {
+          var klass = classes[i],
             animationFactory = $animateProvider.$$registeredAnimations[klass];
-        if (animationFactory && !flagMap[klass]) {
-          matches.push($injector.get(animationFactory));
-          flagMap[klass] = true;
+          if (animationFactory && !flagMap[klass]) {
+            matches.push($injector.get(animationFactory));
+            flagMap[klass] = true;
+          }
         }
+        return matches;
       }
-      return matches;
-    }
-  }];
+    }];
 }];
+'use strict';
 
 var $$AnimateJsDriverProvider = ['$$animationProvider', /** @this */ function($$animationProvider) {
   $$animationProvider.drivers.push('$$animateJsDriver');
@@ -2117,10 +2176,11 @@ var $$AnimateJsDriverProvider = ['$$animationProvider', /** @this */ function($$
     }
   }];
 }];
+'use strict';
 
 var NG_ANIMATE_ATTR_NAME = 'data-ng-animate';
 var NG_ANIMATE_PIN_DATA = '$ngAnimatePin';
-var $$AnimateQueueProvider = ['$animateProvider', /** @this */ function($animateProvider) {
+var $$AnimateQueueProvider = ['$animateProvider', /** @this */ function ($animateProvider) {
   var PRE_DIGEST_STATE = 1;
   var RUNNING_STATE = 2;
   var ONE_SPACE = ' ';
@@ -2148,7 +2208,7 @@ var $$AnimateQueueProvider = ['$animateProvider', /** @this */ function($animate
     var keys = classString.split(ONE_SPACE);
     var map = Object.create(null);
 
-    forEach(keys, function(key) {
+    forEach(keys, function (key) {
       map[key] = true;
     });
     return map;
@@ -2157,14 +2217,14 @@ var $$AnimateQueueProvider = ['$animateProvider', /** @this */ function($animate
   function hasMatchingClasses(newClassString, currentClassString) {
     if (newClassString && currentClassString) {
       var currentClassMap = makeTruthyCssClassMap(currentClassString);
-      return newClassString.split(ONE_SPACE).some(function(className) {
+      return newClassString.split(ONE_SPACE).some(function (className) {
         return currentClassMap[className];
       });
     }
   }
 
   function isAllowed(ruleType, currentAnimation, previousAnimation) {
-    return rules[ruleType].some(function(fn) {
+    return rules[ruleType].some(function (fn) {
       return fn(currentAnimation, previousAnimation);
     });
   }
@@ -2175,40 +2235,40 @@ var $$AnimateQueueProvider = ['$animateProvider', /** @this */ function($animate
     return and ? a && b : a || b;
   }
 
-  rules.join.push(function(newAnimation, currentAnimation) {
+  rules.join.push(function (newAnimation, currentAnimation) {
     // if the new animation is class-based then we can just tack that on
     return !newAnimation.structural && hasAnimationClasses(newAnimation);
   });
 
-  rules.skip.push(function(newAnimation, currentAnimation) {
+  rules.skip.push(function (newAnimation, currentAnimation) {
     // there is no need to animate anything if no classes are being added and
     // there is no structural animation that will be triggered
     return !newAnimation.structural && !hasAnimationClasses(newAnimation);
   });
 
-  rules.skip.push(function(newAnimation, currentAnimation) {
+  rules.skip.push(function (newAnimation, currentAnimation) {
     // why should we trigger a new structural animation if the element will
     // be removed from the DOM anyway?
     return currentAnimation.event === 'leave' && newAnimation.structural;
   });
 
-  rules.skip.push(function(newAnimation, currentAnimation) {
+  rules.skip.push(function (newAnimation, currentAnimation) {
     // if there is an ongoing current animation then don't even bother running the class-based animation
     return currentAnimation.structural && currentAnimation.state === RUNNING_STATE && !newAnimation.structural;
   });
 
-  rules.cancel.push(function(newAnimation, currentAnimation) {
+  rules.cancel.push(function (newAnimation, currentAnimation) {
     // there can never be two structural animations running at the same time
     return currentAnimation.structural && newAnimation.structural;
   });
 
-  rules.cancel.push(function(newAnimation, currentAnimation) {
+  rules.cancel.push(function (newAnimation, currentAnimation) {
     // if the previous animation is already running, but the new animation will
     // be triggered, but the new animation is structural
     return currentAnimation.state === RUNNING_STATE && newAnimation.structural;
   });
 
-  rules.cancel.push(function(newAnimation, currentAnimation) {
+  rules.cancel.push(function (newAnimation, currentAnimation) {
     // cancel the animation if classes added / removed in both animation cancel each other out,
     // but only if the current animation isn't structural
 
@@ -2228,686 +2288,625 @@ var $$AnimateQueueProvider = ['$animateProvider', /** @this */ function($animate
   });
 
   this.$get = ['$$rAF', '$rootScope', '$rootElement', '$document', '$$Map',
-               '$$animation', '$$AnimateRunner', '$templateRequest', '$$jqLite', '$$forceReflow',
-               '$$isDocumentHidden',
-       function($$rAF,   $rootScope,   $rootElement,   $document,   $$Map,
-                $$animation,   $$AnimateRunner,   $templateRequest,   $$jqLite,   $$forceReflow,
-                $$isDocumentHidden) {
+    '$$animation', '$$AnimateRunner', '$templateRequest', '$$jqLite', '$$forceReflow',
+    '$$isDocumentHidden',
+    function ($$rAF, $rootScope, $rootElement, $document, $$Map,
+      $$animation, $$AnimateRunner, $templateRequest, $$jqLite, $$forceReflow,
+      $$isDocumentHidden) {
 
-    var activeAnimationsLookup = new $$Map();
-    var disabledElementsLookup = new $$Map();
-    var animationsEnabled = null;
+      var activeAnimationsLookup = new $$Map();
+      var disabledElementsLookup = new $$Map();
+      var animationsEnabled = null;
 
-    function removeFromDisabledElementsLookup(evt) {
-      disabledElementsLookup.delete(evt.target);
-    }
+      function removeFromDisabledElementsLookup(evt) {
+        disabledElementsLookup.delete(evt.target);
+      }
 
-    function postDigestTaskFactory() {
-      var postDigestCalled = false;
-      return function(fn) {
-        // we only issue a call to postDigest before
-        // it has first passed. This prevents any callbacks
-        // from not firing once the animation has completed
-        // since it will be out of the digest cycle.
-        if (postDigestCalled) {
-          fn();
-        } else {
-          $rootScope.$$postDigest(function() {
-            postDigestCalled = true;
+      function postDigestTaskFactory() {
+        var postDigestCalled = false;
+        return function (fn) {
+          // we only issue a call to postDigest before
+          // it has first passed. This prevents any callbacks
+          // from not firing once the animation has completed
+          // since it will be out of the digest cycle.
+          if (postDigestCalled) {
             fn();
+          } else {
+            $rootScope.$$postDigest(function () {
+              postDigestCalled = true;
+              fn();
+            });
+          }
+        };
+      }
+
+      // Wait until all directive and route-related templates are downloaded and
+      // compiled. The $templateRequest.totalPendingRequests variable keeps track of
+      // all of the remote templates being currently downloaded. If there are no
+      // templates currently downloading then the watcher will still fire anyway.
+      var deregisterWatch = $rootScope.$watch(
+        function () { return $templateRequest.totalPendingRequests === 0; },
+        function (isEmpty) {
+          if (!isEmpty) return;
+          deregisterWatch();
+
+          // Now that all templates have been downloaded, $animate will wait until
+          // the post digest queue is empty before enabling animations. By having two
+          // calls to $postDigest calls we can ensure that the flag is enabled at the
+          // very end of the post digest queue. Since all of the animations in $animate
+          // use $postDigest, it's important that the code below executes at the end.
+          // This basically means that the page is fully downloaded and compiled before
+          // any animations are triggered.
+          $rootScope.$$postDigest(function () {
+            $rootScope.$$postDigest(function () {
+              // we check for null directly in the event that the application already called
+              // .enabled() with whatever arguments that it provided it with
+              if (animationsEnabled === null) {
+                animationsEnabled = true;
+              }
+            });
           });
         }
+      );
+
+      var callbackRegistry = Object.create(null);
+
+      // remember that the `customFilter`/`classNameFilter` are set during the
+      // provider/config stage therefore we can optimize here and setup helper functions
+      var customFilter = $animateProvider.customFilter();
+      var classNameFilter = $animateProvider.classNameFilter();
+      var returnTrue = function () { return true; };
+
+      var isAnimatableByFilter = customFilter || returnTrue;
+      var isAnimatableClassName = !classNameFilter ? returnTrue : function (node, options) {
+        var className = [node.getAttribute('class'), options.addClass, options.removeClass].join(' ');
+        return classNameFilter.test(className);
       };
-    }
 
-    // Wait until all directive and route-related templates are downloaded and
-    // compiled. The $templateRequest.totalPendingRequests variable keeps track of
-    // all of the remote templates being currently downloaded. If there are no
-    // templates currently downloading then the watcher will still fire anyway.
-    var deregisterWatch = $rootScope.$watch(
-      function() { return $templateRequest.totalPendingRequests === 0; },
-      function(isEmpty) {
-        if (!isEmpty) return;
-        deregisterWatch();
+      var applyAnimationClasses = applyAnimationClassesFactory($$jqLite);
 
-        // Now that all templates have been downloaded, $animate will wait until
-        // the post digest queue is empty before enabling animations. By having two
-        // calls to $postDigest calls we can ensure that the flag is enabled at the
-        // very end of the post digest queue. Since all of the animations in $animate
-        // use $postDigest, it's important that the code below executes at the end.
-        // This basically means that the page is fully downloaded and compiled before
-        // any animations are triggered.
-        $rootScope.$$postDigest(function() {
-          $rootScope.$$postDigest(function() {
-            // we check for null directly in the event that the application already called
-            // .enabled() with whatever arguments that it provided it with
-            if (animationsEnabled === null) {
-              animationsEnabled = true;
+      function normalizeAnimationDetails(element, animation) {
+        return mergeAnimationDetails(element, animation, {});
+      }
+
+      function findCallbacks(targetParentNode, targetNode, event) {
+        var matches = [];
+        var entries = callbackRegistry[event];
+        if (entries) {
+          forEach(entries, function (entry) {
+            if (entry.node.contains(targetNode)) {
+              matches.push(entry.callback);
+            } else if (event === 'leave' && entry.node.contains(targetParentNode)) {
+              matches.push(entry.callback);
             }
           });
-        });
-      }
-    );
-
-    var callbackRegistry = Object.create(null);
-
-    // remember that the `customFilter`/`classNameFilter` are set during the
-    // provider/config stage therefore we can optimize here and setup helper functions
-    var customFilter = $animateProvider.customFilter();
-    var classNameFilter = $animateProvider.classNameFilter();
-    var returnTrue = function() { return true; };
-
-    var isAnimatableByFilter = customFilter || returnTrue;
-    var isAnimatableClassName = !classNameFilter ? returnTrue : function(node, options) {
-      var className = [node.getAttribute('class'), options.addClass, options.removeClass].join(' ');
-      return classNameFilter.test(className);
-    };
-
-    var applyAnimationClasses = applyAnimationClassesFactory($$jqLite);
-
-    function normalizeAnimationDetails(element, animation) {
-      return mergeAnimationDetails(element, animation, {});
-    }
-
-    // IE9-11 has no method "contains" in SVG element and in Node.prototype. Bug #10259.
-    var contains = window.Node.prototype.contains || /** @this */ function(arg) {
-      // eslint-disable-next-line no-bitwise
-      return this === arg || !!(this.compareDocumentPosition(arg) & 16);
-    };
-
-    function findCallbacks(targetParentNode, targetNode, event) {
-      var matches = [];
-      var entries = callbackRegistry[event];
-      if (entries) {
-        forEach(entries, function(entry) {
-          if (contains.call(entry.node, targetNode)) {
-            matches.push(entry.callback);
-          } else if (event === 'leave' && contains.call(entry.node, targetParentNode)) {
-            matches.push(entry.callback);
-          }
-        });
-      }
-
-      return matches;
-    }
-
-    function filterFromRegistry(list, matchContainer, matchCallback) {
-      var containerNode = extractElementNode(matchContainer);
-      return list.filter(function(entry) {
-        var isMatch = entry.node === containerNode &&
-                        (!matchCallback || entry.callback === matchCallback);
-        return !isMatch;
-      });
-    }
-
-    function cleanupEventListeners(phase, node) {
-      if (phase === 'close' && !node.parentNode) {
-        // If the element is not attached to a parentNode, it has been removed by
-        // the domOperation, and we can safely remove the event callbacks
-        $animate.off(node);
-      }
-    }
-
-    var $animate = {
-      on: function(event, container, callback) {
-        var node = extractElementNode(container);
-        callbackRegistry[event] = callbackRegistry[event] || [];
-        callbackRegistry[event].push({
-          node: node,
-          callback: callback
-        });
-
-        // Remove the callback when the element is removed from the DOM
-        jqLite(container).on('$destroy', function() {
-          var animationDetails = activeAnimationsLookup.get(node);
-
-          if (!animationDetails) {
-            // If there's an animation ongoing, the callback calling code will remove
-            // the event listeners. If we'd remove here, the callbacks would be removed
-            // before the animation ends
-            $animate.off(event, container, callback);
-          }
-        });
-      },
-
-      off: function(event, container, callback) {
-        if (arguments.length === 1 && !isString(arguments[0])) {
-          container = arguments[0];
-          for (var eventType in callbackRegistry) {
-            callbackRegistry[eventType] = filterFromRegistry(callbackRegistry[eventType], container);
-          }
-
-          return;
         }
 
-        var entries = callbackRegistry[event];
-        if (!entries) return;
+        return matches;
+      }
 
-        callbackRegistry[event] = arguments.length === 1
+      function filterFromRegistry(list, matchContainer, matchCallback) {
+        var containerNode = extractElementNode(matchContainer);
+        return list.filter(function (entry) {
+          var isMatch = entry.node === containerNode &&
+            (!matchCallback || entry.callback === matchCallback);
+          return !isMatch;
+        });
+      }
+
+      function cleanupEventListeners(phase, node) {
+        if (phase === 'close' && !node.parentNode) {
+          // If the element is not attached to a parentNode, it has been removed by
+          // the domOperation, and we can safely remove the event callbacks
+          $animate.off(node);
+        }
+      }
+
+      var $animate = {
+        on: function (event, container, callback) {
+          var node = extractElementNode(container);
+          callbackRegistry[event] = callbackRegistry[event] || [];
+          callbackRegistry[event].push({
+            node: node,
+            callback: callback
+          });
+
+          // Remove the callback when the element is removed from the DOM
+          jqLite(container).on('$destroy', function () {
+            var animationDetails = activeAnimationsLookup.get(node);
+
+            if (!animationDetails) {
+              // If there's an animation ongoing, the callback calling code will remove
+              // the event listeners. If we'd remove here, the callbacks would be removed
+              // before the animation ends
+              $animate.off(event, container, callback);
+            }
+          });
+        },
+
+        off: function (event, container, callback) {
+          if (arguments.length === 1 && !isString(arguments[0])) {
+            container = arguments[0];
+            for (var eventType in callbackRegistry) {
+              callbackRegistry[eventType] = filterFromRegistry(callbackRegistry[eventType], container);
+            }
+
+            return;
+          }
+
+          var entries = callbackRegistry[event];
+          if (!entries) return;
+
+          callbackRegistry[event] = arguments.length === 1
             ? null
             : filterFromRegistry(entries, container, callback);
-      },
+        },
 
-      pin: function(element, parentElement) {
-        assertArg(isElement(element), 'element', 'not an element');
-        assertArg(isElement(parentElement), 'parentElement', 'not an element');
-        element.data(NG_ANIMATE_PIN_DATA, parentElement);
-      },
+        pin: function (element, parentElement) {
+          assertArg(isElement(element), 'element', 'not an element');
+          assertArg(isElement(parentElement), 'parentElement', 'not an element');
+          element.data(NG_ANIMATE_PIN_DATA, parentElement);
+        },
 
-      push: function(element, event, options, domOperation) {
-        options = options || {};
-        options.domOperation = domOperation;
-        return queueAnimation(element, event, options);
-      },
+        push: function (element, event, options, domOperation) {
+          options = options || {};
+          options.domOperation = domOperation;
+          return queueAnimation(element, event, options);
+        },
 
-      // this method has four signatures:
-      //  () - global getter
-      //  (bool) - global setter
-      //  (element) - element getter
-      //  (element, bool) - element setter<F37>
-      enabled: function(element, bool) {
-        var argCount = arguments.length;
+        // this method has four signatures:
+        //  () - global getter
+        //  (bool) - global setter
+        //  (element) - element getter
+        //  (element, bool) - element setter<F37>
+        enabled: function (element, bool) {
+          var argCount = arguments.length;
 
-        if (argCount === 0) {
-          // () - Global getter
-          bool = !!animationsEnabled;
-        } else {
-          var hasElement = isElement(element);
-
-          if (!hasElement) {
-            // (bool) - Global setter
-            bool = animationsEnabled = !!element;
+          if (argCount === 0) {
+            // () - Global getter
+            bool = !!animationsEnabled;
           } else {
-            var node = getDomNode(element);
+            var hasElement = isElement(element);
 
-            if (argCount === 1) {
-              // (element) - Element getter
-              bool = !disabledElementsLookup.get(node);
+            if (!hasElement) {
+              // (bool) - Global setter
+              bool = animationsEnabled = !!element;
             } else {
-              // (element, bool) - Element setter
-              if (!disabledElementsLookup.has(node)) {
-                // The element is added to the map for the first time.
-                // Create a listener to remove it on `$destroy` (to avoid memory leak).
-                jqLite(element).on('$destroy', removeFromDisabledElementsLookup);
+              var node = getDomNode(element);
+
+              if (argCount === 1) {
+                // (element) - Element getter
+                bool = !disabledElementsLookup.get(node);
+              } else {
+                // (element, bool) - Element setter
+                if (!disabledElementsLookup.has(node)) {
+                  // The element is added to the map for the first time.
+                  // Create a listener to remove it on `$destroy` (to avoid memory leak).
+                  jqLite(element).on('$destroy', removeFromDisabledElementsLookup);
+                }
+                disabledElementsLookup.set(node, !bool);
               }
-              disabledElementsLookup.set(node, !bool);
             }
           }
+
+          return bool;
+        }
+      };
+
+      return $animate;
+
+      function queueAnimation(originalElement, event, initialOptions) {
+        // we always make a copy of the options since
+        // there should never be any side effects on
+        // the input data when running `$animateCss`.
+        var options = copy(initialOptions);
+
+        var element = stripCommentsFromElement(originalElement);
+        var node = getDomNode(element);
+        var parentNode = node && node.parentNode;
+
+        options = prepareAnimationOptions(options);
+
+        // we create a fake runner with a working promise.
+        // These methods will become available after the digest has passed
+        var runner = new $$AnimateRunner();
+
+        // this is used to trigger callbacks in postDigest mode
+        var runInNextPostDigestOrNow = postDigestTaskFactory();
+
+        if (isArray(options.addClass)) {
+          options.addClass = options.addClass.join(' ');
         }
 
-        return bool;
-      }
-    };
+        if (options.addClass && !isString(options.addClass)) {
+          options.addClass = null;
+        }
 
-    return $animate;
+        if (isArray(options.removeClass)) {
+          options.removeClass = options.removeClass.join(' ');
+        }
 
-    function queueAnimation(originalElement, event, initialOptions) {
-      // we always make a copy of the options since
-      // there should never be any side effects on
-      // the input data when running `$animateCss`.
-      var options = copy(initialOptions);
+        if (options.removeClass && !isString(options.removeClass)) {
+          options.removeClass = null;
+        }
 
-      var element = stripCommentsFromElement(originalElement);
-      var node = getDomNode(element);
-      var parentNode = node && node.parentNode;
+        if (options.from && !isObject(options.from)) {
+          options.from = null;
+        }
 
-      options = prepareAnimationOptions(options);
+        if (options.to && !isObject(options.to)) {
+          options.to = null;
+        }
 
-      // we create a fake runner with a working promise.
-      // These methods will become available after the digest has passed
-      var runner = new $$AnimateRunner();
-
-      // this is used to trigger callbacks in postDigest mode
-      var runInNextPostDigestOrNow = postDigestTaskFactory();
-
-      if (isArray(options.addClass)) {
-        options.addClass = options.addClass.join(' ');
-      }
-
-      if (options.addClass && !isString(options.addClass)) {
-        options.addClass = null;
-      }
-
-      if (isArray(options.removeClass)) {
-        options.removeClass = options.removeClass.join(' ');
-      }
-
-      if (options.removeClass && !isString(options.removeClass)) {
-        options.removeClass = null;
-      }
-
-      if (options.from && !isObject(options.from)) {
-        options.from = null;
-      }
-
-      if (options.to && !isObject(options.to)) {
-        options.to = null;
-      }
-
-      // If animations are hard-disabled for the whole application there is no need to continue.
-      // There are also situations where a directive issues an animation for a jqLite wrapper that
-      // contains only comment nodes. In this case, there is no way we can perform an animation.
-      if (!animationsEnabled ||
+        // If animations are hard-disabled for the whole application there is no need to continue.
+        // There are also situations where a directive issues an animation for a jqLite wrapper that
+        // contains only comment nodes. In this case, there is no way we can perform an animation.
+        if (!animationsEnabled ||
           !node ||
           !isAnimatableByFilter(node, event, initialOptions) ||
           !isAnimatableClassName(node, options)) {
-        close();
-        return runner;
-      }
-
-      var isStructural = ['enter', 'move', 'leave'].indexOf(event) >= 0;
-
-      var documentHidden = $$isDocumentHidden();
-
-      // This is a hard disable of all animations the element itself, therefore  there is no need to
-      // continue further past this point if not enabled
-      // Animations are also disabled if the document is currently hidden (page is not visible
-      // to the user), because browsers slow down or do not flush calls to requestAnimationFrame
-      var skipAnimations = documentHidden || disabledElementsLookup.get(node);
-      var existingAnimation = (!skipAnimations && activeAnimationsLookup.get(node)) || {};
-      var hasExistingAnimation = !!existingAnimation.state;
-
-      // there is no point in traversing the same collection of parent ancestors if a followup
-      // animation will be run on the same element that already did all that checking work
-      if (!skipAnimations && (!hasExistingAnimation || existingAnimation.state !== PRE_DIGEST_STATE)) {
-        skipAnimations = !areAnimationsAllowed(node, parentNode, event);
-      }
-
-      if (skipAnimations) {
-        // Callbacks should fire even if the document is hidden (regression fix for issue #14120)
-        if (documentHidden) notifyProgress(runner, event, 'start', getEventData(options));
-        close();
-        if (documentHidden) notifyProgress(runner, event, 'close', getEventData(options));
-        return runner;
-      }
-
-      if (isStructural) {
-        closeChildAnimations(node);
-      }
-
-      var newAnimation = {
-        structural: isStructural,
-        element: element,
-        event: event,
-        addClass: options.addClass,
-        removeClass: options.removeClass,
-        close: close,
-        options: options,
-        runner: runner
-      };
-
-      if (hasExistingAnimation) {
-        var skipAnimationFlag = isAllowed('skip', newAnimation, existingAnimation);
-        if (skipAnimationFlag) {
-          if (existingAnimation.state === RUNNING_STATE) {
-            close();
-            return runner;
-          } else {
-            mergeAnimationDetails(element, existingAnimation, newAnimation);
-            return existingAnimation.runner;
-          }
+          close();
+          return runner;
         }
-        var cancelAnimationFlag = isAllowed('cancel', newAnimation, existingAnimation);
-        if (cancelAnimationFlag) {
-          if (existingAnimation.state === RUNNING_STATE) {
-            // this will end the animation right away and it is safe
-            // to do so since the animation is already running and the
-            // runner callback code will run in async
-            existingAnimation.runner.end();
-          } else if (existingAnimation.structural) {
-            // this means that the animation is queued into a digest, but
-            // hasn't started yet. Therefore it is safe to run the close
-            // method which will call the runner methods in async.
-            existingAnimation.close();
-          } else {
-            // this will merge the new animation options into existing animation options
-            mergeAnimationDetails(element, existingAnimation, newAnimation);
 
-            return existingAnimation.runner;
-          }
-        } else {
-          // a joined animation means that this animation will take over the existing one
-          // so an example would involve a leave animation taking over an enter. Then when
-          // the postDigest kicks in the enter will be ignored.
-          var joinAnimationFlag = isAllowed('join', newAnimation, existingAnimation);
-          if (joinAnimationFlag) {
+        var isStructural = ['enter', 'move', 'leave'].indexOf(event) >= 0;
+
+        var documentHidden = $$isDocumentHidden();
+
+        // This is a hard disable of all animations the element itself, therefore  there is no need to
+        // continue further past this point if not enabled
+        // Animations are also disabled if the document is currently hidden (page is not visible
+        // to the user), because browsers slow down or do not flush calls to requestAnimationFrame
+        var skipAnimations = documentHidden || disabledElementsLookup.get(node);
+        var existingAnimation = (!skipAnimations && activeAnimationsLookup.get(node)) || {};
+        var hasExistingAnimation = !!existingAnimation.state;
+
+        // there is no point in traversing the same collection of parent ancestors if a followup
+        // animation will be run on the same element that already did all that checking work
+        if (!skipAnimations && (!hasExistingAnimation || existingAnimation.state !== PRE_DIGEST_STATE)) {
+          skipAnimations = !areAnimationsAllowed(node, parentNode, event);
+        }
+
+        if (skipAnimations) {
+          // Callbacks should fire even if the document is hidden (regression fix for issue #14120)
+          if (documentHidden) notifyProgress(runner, event, 'start', getEventData(options));
+          close();
+          if (documentHidden) notifyProgress(runner, event, 'close', getEventData(options));
+          return runner;
+        }
+
+        if (isStructural) {
+          closeChildAnimations(node);
+        }
+
+        var newAnimation = {
+          structural: isStructural,
+          element: element,
+          event: event,
+          addClass: options.addClass,
+          removeClass: options.removeClass,
+          close: close,
+          options: options,
+          runner: runner
+        };
+
+        if (hasExistingAnimation) {
+          var skipAnimationFlag = isAllowed('skip', newAnimation, existingAnimation);
+          if (skipAnimationFlag) {
             if (existingAnimation.state === RUNNING_STATE) {
-              normalizeAnimationDetails(element, newAnimation);
+              close();
+              return runner;
             } else {
-              applyGeneratedPreparationClasses($$jqLite, element, isStructural ? event : null, options);
-
-              event = newAnimation.event = existingAnimation.event;
-              options = mergeAnimationDetails(element, existingAnimation, newAnimation);
-
-              //we return the same runner since only the option values of this animation will
-              //be fed into the `existingAnimation`.
+              mergeAnimationDetails(element, existingAnimation, newAnimation);
               return existingAnimation.runner;
             }
           }
-        }
-      } else {
-        // normalization in this case means that it removes redundant CSS classes that
-        // already exist (addClass) or do not exist (removeClass) on the element
-        normalizeAnimationDetails(element, newAnimation);
-      }
+          var cancelAnimationFlag = isAllowed('cancel', newAnimation, existingAnimation);
+          if (cancelAnimationFlag) {
+            if (existingAnimation.state === RUNNING_STATE) {
+              // this will end the animation right away and it is safe
+              // to do so since the animation is already running and the
+              // runner callback code will run in async
+              existingAnimation.runner.end();
+            } else if (existingAnimation.structural) {
+              // this means that the animation is queued into a digest, but
+              // hasn't started yet. Therefore it is safe to run the close
+              // method which will call the runner methods in async.
+              existingAnimation.close();
+            } else {
+              // this will merge the new animation options into existing animation options
+              mergeAnimationDetails(element, existingAnimation, newAnimation);
 
-      // when the options are merged and cleaned up we may end up not having to do
-      // an animation at all, therefore we should check this before issuing a post
-      // digest callback. Structural animations will always run no matter what.
-      var isValidAnimation = newAnimation.structural;
-      if (!isValidAnimation) {
-        // animate (from/to) can be quickly checked first, otherwise we check if any classes are present
-        isValidAnimation = (newAnimation.event === 'animate' && Object.keys(newAnimation.options.to || {}).length > 0)
-                            || hasAnimationClasses(newAnimation);
-      }
+              return existingAnimation.runner;
+            }
+          } else {
+            // a joined animation means that this animation will take over the existing one
+            // so an example would involve a leave animation taking over an enter. Then when
+            // the postDigest kicks in the enter will be ignored.
+            var joinAnimationFlag = isAllowed('join', newAnimation, existingAnimation);
+            if (joinAnimationFlag) {
+              if (existingAnimation.state === RUNNING_STATE) {
+                normalizeAnimationDetails(element, newAnimation);
+              } else {
+                applyGeneratedPreparationClasses($$jqLite, element, isStructural ? event : null, options);
 
-      if (!isValidAnimation) {
-        close();
-        clearElementAnimationState(node);
-        return runner;
-      }
+                event = newAnimation.event = existingAnimation.event;
+                options = mergeAnimationDetails(element, existingAnimation, newAnimation);
 
-      // the counter keeps track of cancelled animations
-      var counter = (existingAnimation.counter || 0) + 1;
-      newAnimation.counter = counter;
-
-      markElementAnimationState(node, PRE_DIGEST_STATE, newAnimation);
-
-      $rootScope.$$postDigest(function() {
-        // It is possible that the DOM nodes inside `originalElement` have been replaced. This can
-        // happen if the animated element is a transcluded clone and also has a `templateUrl`
-        // directive on it. Therefore, we must recreate `element` in order to interact with the
-        // actual DOM nodes.
-        // Note: We still need to use the old `node` for certain things, such as looking up in
-        //       HashMaps where it was used as the key.
-
-        element = stripCommentsFromElement(originalElement);
-
-        var animationDetails = activeAnimationsLookup.get(node);
-        var animationCancelled = !animationDetails;
-        animationDetails = animationDetails || {};
-
-        // if addClass/removeClass is called before something like enter then the
-        // registered parent element may not be present. The code below will ensure
-        // that a final value for parent element is obtained
-        var parentElement = element.parent() || [];
-
-        // animate/structural/class-based animations all have requirements. Otherwise there
-        // is no point in performing an animation. The parent node must also be set.
-        var isValidAnimation = parentElement.length > 0
-                                && (animationDetails.event === 'animate'
-                                    || animationDetails.structural
-                                    || hasAnimationClasses(animationDetails));
-
-        // this means that the previous animation was cancelled
-        // even if the follow-up animation is the same event
-        if (animationCancelled || animationDetails.counter !== counter || !isValidAnimation) {
-          // if another animation did not take over then we need
-          // to make sure that the domOperation and options are
-          // handled accordingly
-          if (animationCancelled) {
-            applyAnimationClasses(element, options);
-            applyAnimationStyles(element, options);
+                //we return the same runner since only the option values of this animation will
+                //be fed into the `existingAnimation`.
+                return existingAnimation.runner;
+              }
+            }
           }
-
-          // if the event changed from something like enter to leave then we do
-          // it, otherwise if it's the same then the end result will be the same too
-          if (animationCancelled || (isStructural && animationDetails.event !== event)) {
-            options.domOperation();
-            runner.end();
-          }
-
-          // in the event that the element animation was not cancelled or a follow-up animation
-          // isn't allowed to animate from here then we need to clear the state of the element
-          // so that any future animations won't read the expired animation data.
-          if (!isValidAnimation) {
-            clearElementAnimationState(node);
-          }
-
-          return;
+        } else {
+          // normalization in this case means that it removes redundant CSS classes that
+          // already exist (addClass) or do not exist (removeClass) on the element
+          normalizeAnimationDetails(element, newAnimation);
         }
 
-        // this combined multiple class to addClass / removeClass into a setClass event
-        // so long as a structural event did not take over the animation
-        event = !animationDetails.structural && hasAnimationClasses(animationDetails, true)
+        // when the options are merged and cleaned up we may end up not having to do
+        // an animation at all, therefore we should check this before issuing a post
+        // digest callback. Structural animations will always run no matter what.
+        var isValidAnimation = newAnimation.structural;
+        if (!isValidAnimation) {
+          // animate (from/to) can be quickly checked first, otherwise we check if any classes are present
+          isValidAnimation = (newAnimation.event === 'animate' && Object.keys(newAnimation.options.to || {}).length > 0)
+            || hasAnimationClasses(newAnimation);
+        }
+
+        if (!isValidAnimation) {
+          close();
+          clearElementAnimationState(node);
+          return runner;
+        }
+
+        // the counter keeps track of cancelled animations
+        var counter = (existingAnimation.counter || 0) + 1;
+        newAnimation.counter = counter;
+
+        markElementAnimationState(node, PRE_DIGEST_STATE, newAnimation);
+
+        $rootScope.$$postDigest(function () {
+          // It is possible that the DOM nodes inside `originalElement` have been replaced. This can
+          // happen if the animated element is a transcluded clone and also has a `templateUrl`
+          // directive on it. Therefore, we must recreate `element` in order to interact with the
+          // actual DOM nodes.
+          // Note: We still need to use the old `node` for certain things, such as looking up in
+          //       HashMaps where it was used as the key.
+
+          element = stripCommentsFromElement(originalElement);
+
+          var animationDetails = activeAnimationsLookup.get(node);
+          var animationCancelled = !animationDetails;
+          animationDetails = animationDetails || {};
+
+          // if addClass/removeClass is called before something like enter then the
+          // registered parent element may not be present. The code below will ensure
+          // that a final value for parent element is obtained
+          var parentElement = element.parent() || [];
+
+          // animate/structural/class-based animations all have requirements. Otherwise there
+          // is no point in performing an animation. The parent node must also be set.
+          var isValidAnimation = parentElement.length > 0
+            && (animationDetails.event === 'animate'
+              || animationDetails.structural
+              || hasAnimationClasses(animationDetails));
+
+          // this means that the previous animation was cancelled
+          // even if the follow-up animation is the same event
+          if (animationCancelled || animationDetails.counter !== counter || !isValidAnimation) {
+            // if another animation did not take over then we need
+            // to make sure that the domOperation and options are
+            // handled accordingly
+            if (animationCancelled) {
+              applyAnimationClasses(element, options);
+              applyAnimationStyles(element, options);
+            }
+
+            // if the event changed from something like enter to leave then we do
+            // it, otherwise if it's the same then the end result will be the same too
+            if (animationCancelled || (isStructural && animationDetails.event !== event)) {
+              options.domOperation();
+              runner.end();
+            }
+
+            // in the event that the element animation was not cancelled or a follow-up animation
+            // isn't allowed to animate from here then we need to clear the state of the element
+            // so that any future animations won't read the expired animation data.
+            if (!isValidAnimation) {
+              clearElementAnimationState(node);
+            }
+
+            return;
+          }
+
+          // this combined multiple class to addClass / removeClass into a setClass event
+          // so long as a structural event did not take over the animation
+          event = !animationDetails.structural && hasAnimationClasses(animationDetails, true)
             ? 'setClass'
             : animationDetails.event;
 
-        markElementAnimationState(node, RUNNING_STATE);
-        var realRunner = $$animation(element, event, animationDetails.options);
+          markElementAnimationState(node, RUNNING_STATE);
+          var realRunner = $$animation(element, event, animationDetails.options);
 
-        // this will update the runner's flow-control events based on
-        // the `realRunner` object.
-        runner.setHost(realRunner);
-        notifyProgress(runner, event, 'start', getEventData(options));
+          // this will update the runner's flow-control events based on
+          // the `realRunner` object.
+          runner.setHost(realRunner);
+          notifyProgress(runner, event, 'start', getEventData(options));
 
-        realRunner.done(function(status) {
-          close(!status);
-          var animationDetails = activeAnimationsLookup.get(node);
-          if (animationDetails && animationDetails.counter === counter) {
-            clearElementAnimationState(node);
-          }
-          notifyProgress(runner, event, 'close', getEventData(options));
+          realRunner.done(function (status) {
+            close(!status);
+            var animationDetails = activeAnimationsLookup.get(node);
+            if (animationDetails && animationDetails.counter === counter) {
+              clearElementAnimationState(node);
+            }
+            notifyProgress(runner, event, 'close', getEventData(options));
+          });
         });
-      });
 
-      return runner;
+        return runner;
 
-      function notifyProgress(runner, event, phase, data) {
-        runInNextPostDigestOrNow(function() {
-          var callbacks = findCallbacks(parentNode, node, event);
-          if (callbacks.length) {
-            // do not optimize this call here to RAF because
-            // we don't know how heavy the callback code here will
-            // be and if this code is buffered then this can
-            // lead to a performance regression.
-            $$rAF(function() {
-              forEach(callbacks, function(callback) {
-                callback(element, phase, data);
+        function notifyProgress(runner, event, phase, data) {
+          runInNextPostDigestOrNow(function () {
+            var callbacks = findCallbacks(parentNode, node, event);
+            if (callbacks.length) {
+              // do not optimize this call here to RAF because
+              // we don't know how heavy the callback code here will
+              // be and if this code is buffered then this can
+              // lead to a performance regression.
+              $$rAF(function () {
+                forEach(callbacks, function (callback) {
+                  callback(element, phase, data);
+                });
+                cleanupEventListeners(phase, node);
               });
+            } else {
               cleanupEventListeners(phase, node);
-            });
-          } else {
-            cleanupEventListeners(phase, node);
+            }
+          });
+          runner.progress(event, phase, data);
+        }
+
+        function close(reject) {
+          clearGeneratedClasses(element, options);
+          applyAnimationClasses(element, options);
+          applyAnimationStyles(element, options);
+          options.domOperation();
+          runner.complete(!reject);
+        }
+      }
+
+      function closeChildAnimations(node) {
+        var children = node.querySelectorAll('[' + NG_ANIMATE_ATTR_NAME + ']');
+        forEach(children, function (child) {
+          var state = parseInt(child.getAttribute(NG_ANIMATE_ATTR_NAME), 10);
+          var animationDetails = activeAnimationsLookup.get(child);
+          if (animationDetails) {
+            switch (state) {
+              case RUNNING_STATE:
+                animationDetails.runner.end();
+              /* falls through */
+              case PRE_DIGEST_STATE:
+                activeAnimationsLookup.delete(child);
+                break;
+            }
           }
         });
-        runner.progress(event, phase, data);
       }
 
-      function close(reject) {
-        clearGeneratedClasses(element, options);
-        applyAnimationClasses(element, options);
-        applyAnimationStyles(element, options);
-        options.domOperation();
-        runner.complete(!reject);
+      function clearElementAnimationState(node) {
+        node.removeAttribute(NG_ANIMATE_ATTR_NAME);
+        activeAnimationsLookup.delete(node);
       }
-    }
 
-    function closeChildAnimations(node) {
-      var children = node.querySelectorAll('[' + NG_ANIMATE_ATTR_NAME + ']');
-      forEach(children, function(child) {
-        var state = parseInt(child.getAttribute(NG_ANIMATE_ATTR_NAME), 10);
-        var animationDetails = activeAnimationsLookup.get(child);
-        if (animationDetails) {
-          switch (state) {
-            case RUNNING_STATE:
-              animationDetails.runner.end();
-              /* falls through */
-            case PRE_DIGEST_STATE:
-              activeAnimationsLookup.delete(child);
-              break;
+      /**
+       * This fn returns false if any of the following is true:
+       * a) animations on any parent element are disabled, and animations on the element aren't explicitly allowed
+       * b) a parent element has an ongoing structural animation, and animateChildren is false
+       * c) the element is not a child of the body
+       * d) the element is not a child of the $rootElement
+       */
+      function areAnimationsAllowed(node, parentNode, event) {
+        var bodyNode = $document[0].body;
+        var rootNode = getDomNode($rootElement);
+
+        var bodyNodeDetected = (node === bodyNode) || node.nodeName === 'HTML';
+        var rootNodeDetected = (node === rootNode);
+        var parentAnimationDetected = false;
+        var elementDisabled = disabledElementsLookup.get(node);
+        var animateChildren;
+
+        var parentHost = angular.element.data(node, NG_ANIMATE_PIN_DATA);
+        if (parentHost) {
+          parentNode = getDomNode(parentHost);
+        }
+
+        while (parentNode) {
+          if (!rootNodeDetected) {
+            // AngularJS doesn't want to attempt to animate elements outside of the application
+            // therefore we need to ensure that the rootElement is an ancestor of the current element
+            rootNodeDetected = (parentNode === rootNode);
           }
-        }
-      });
-    }
 
-    function clearElementAnimationState(node) {
-      node.removeAttribute(NG_ANIMATE_ATTR_NAME);
-      activeAnimationsLookup.delete(node);
-    }
-
-    /**
-     * This fn returns false if any of the following is true:
-     * a) animations on any parent element are disabled, and animations on the element aren't explicitly allowed
-     * b) a parent element has an ongoing structural animation, and animateChildren is false
-     * c) the element is not a child of the body
-     * d) the element is not a child of the $rootElement
-     */
-    function areAnimationsAllowed(node, parentNode, event) {
-      var bodyNode = $document[0].body;
-      var rootNode = getDomNode($rootElement);
-
-      var bodyNodeDetected = (node === bodyNode) || node.nodeName === 'HTML';
-      var rootNodeDetected = (node === rootNode);
-      var parentAnimationDetected = false;
-      var elementDisabled = disabledElementsLookup.get(node);
-      var animateChildren;
-
-      var parentHost = jqLite.data(node, NG_ANIMATE_PIN_DATA);
-      if (parentHost) {
-        parentNode = getDomNode(parentHost);
-      }
-
-      while (parentNode) {
-        if (!rootNodeDetected) {
-          // AngularJS doesn't want to attempt to animate elements outside of the application
-          // therefore we need to ensure that the rootElement is an ancestor of the current element
-          rootNodeDetected = (parentNode === rootNode);
-        }
-
-        if (parentNode.nodeType !== ELEMENT_NODE) {
-          // no point in inspecting the #document element
-          break;
-        }
-
-        var details = activeAnimationsLookup.get(parentNode) || {};
-        // either an enter, leave or move animation will commence
-        // therefore we can't allow any animations to take place
-        // but if a parent animation is class-based then that's ok
-        if (!parentAnimationDetected) {
-          var parentNodeDisabled = disabledElementsLookup.get(parentNode);
-
-          if (parentNodeDisabled === true && elementDisabled !== false) {
-            // disable animations if the user hasn't explicitly enabled animations on the
-            // current element
-            elementDisabled = true;
-            // element is disabled via parent element, no need to check anything else
+          if (parentNode.nodeType !== ELEMENT_NODE) {
+            // no point in inspecting the #document element
             break;
-          } else if (parentNodeDisabled === false) {
-            elementDisabled = false;
           }
-          parentAnimationDetected = details.structural;
-        }
 
-        if (isUndefined(animateChildren) || animateChildren === true) {
-          var value = jqLite.data(parentNode, NG_ANIMATE_CHILDREN_DATA);
-          if (isDefined(value)) {
-            animateChildren = value;
+          var details = activeAnimationsLookup.get(parentNode) || {};
+          // either an enter, leave or move animation will commence
+          // therefore we can't allow any animations to take place
+          // but if a parent animation is class-based then that's ok
+          if (!parentAnimationDetected) {
+            var parentNodeDisabled = disabledElementsLookup.get(parentNode);
+
+            if (parentNodeDisabled === true && elementDisabled !== false) {
+              // disable animations if the user hasn't explicitly enabled animations on the
+              // current element
+              elementDisabled = true;
+              // element is disabled via parent element, no need to check anything else
+              break;
+            } else if (parentNodeDisabled === false) {
+              elementDisabled = false;
+            }
+            parentAnimationDetected = details.structural;
           }
-        }
 
-        // there is no need to continue traversing at this point
-        if (parentAnimationDetected && animateChildren === false) break;
-
-        if (!bodyNodeDetected) {
-          // we also need to ensure that the element is or will be a part of the body element
-          // otherwise it is pointless to even issue an animation to be rendered
-          bodyNodeDetected = (parentNode === bodyNode);
-        }
-
-        if (bodyNodeDetected && rootNodeDetected) {
-          // If both body and root have been found, any other checks are pointless,
-          // as no animation data should live outside the application
-          break;
-        }
-
-        if (!rootNodeDetected) {
-          // If `rootNode` is not detected, check if `parentNode` is pinned to another element
-          parentHost = jqLite.data(parentNode, NG_ANIMATE_PIN_DATA);
-          if (parentHost) {
-            // The pin target element becomes the next parent element
-            parentNode = getDomNode(parentHost);
-            continue;
+          if (isUndefined(animateChildren) || animateChildren === true) {
+            var value = angular.element.data(parentNode, NG_ANIMATE_CHILDREN_DATA);
+            if (isDefined(value)) {
+              animateChildren = value;
+            }
           }
+
+          // there is no need to continue traversing at this point
+          if (parentAnimationDetected && animateChildren === false) break;
+
+          if (!bodyNodeDetected) {
+            // we also need to ensure that the element is or will be a part of the body element
+            // otherwise it is pointless to even issue an animation to be rendered
+            bodyNodeDetected = (parentNode === bodyNode);
+          }
+
+          if (bodyNodeDetected && rootNodeDetected) {
+            // If both body and root have been found, any other checks are pointless,
+            // as no animation data should live outside the application
+            break;
+          }
+
+          if (!rootNodeDetected) {
+            // If `rootNode` is not detected, check if `parentNode` is pinned to another element
+            parentHost = angular.element.data(parentNode, NG_ANIMATE_PIN_DATA);
+            if (parentHost) {
+              // The pin target element becomes the next parent element
+              parentNode = getDomNode(parentHost);
+              continue;
+            }
+          }
+
+          parentNode = parentNode.parentNode;
         }
 
-        parentNode = parentNode.parentNode;
+        var allowAnimation = (!parentAnimationDetected || animateChildren) && elementDisabled !== true;
+        return allowAnimation && rootNodeDetected && bodyNodeDetected;
       }
 
-      var allowAnimation = (!parentAnimationDetected || animateChildren) && elementDisabled !== true;
-      return allowAnimation && rootNodeDetected && bodyNodeDetected;
-    }
+      function markElementAnimationState(node, state, details) {
+        details = details || {};
+        details.state = state;
 
-    function markElementAnimationState(node, state, details) {
-      details = details || {};
-      details.state = state;
+        node.setAttribute(NG_ANIMATE_ATTR_NAME, state);
 
-      node.setAttribute(NG_ANIMATE_ATTR_NAME, state);
-
-      var oldValue = activeAnimationsLookup.get(node);
-      var newValue = oldValue
+        var oldValue = activeAnimationsLookup.get(node);
+        var newValue = oldValue
           ? extend(oldValue, details)
           : details;
-      activeAnimationsLookup.set(node, newValue);
-    }
-  }];
-}];
-
-/** @this */
-var $$AnimateCacheProvider = function() {
-
-  var KEY = '$$ngAnimateParentKey';
-  var parentCounter = 0;
-  var cache = Object.create(null);
-
-  this.$get = [function() {
-    return {
-      cacheKey: function(node, method, addClass, removeClass) {
-        var parentNode = node.parentNode;
-        var parentID = parentNode[KEY] || (parentNode[KEY] = ++parentCounter);
-        var parts = [parentID, method, node.getAttribute('class')];
-        if (addClass) {
-          parts.push(addClass);
-        }
-        if (removeClass) {
-          parts.push(removeClass);
-        }
-        return parts.join(' ');
-      },
-
-      containsCachedAnimationWithoutDuration: function(key) {
-        var entry = cache[key];
-
-        // nothing cached, so go ahead and animate
-        // otherwise it should be a valid animation
-        return (entry && !entry.isValid) || false;
-      },
-
-      flush: function() {
-        cache = Object.create(null);
-      },
-
-      count: function(key) {
-        var entry = cache[key];
-        return entry ? entry.total : 0;
-      },
-
-      get: function(key) {
-        var entry = cache[key];
-        return entry && entry.value;
-      },
-
-      put: function(key, value, isValid) {
-        if (!cache[key]) {
-          cache[key] = { total: 1, value: value, isValid: isValid };
-        } else {
-          cache[key].total++;
-          cache[key].value = value;
-        }
+        activeAnimationsLookup.set(node, newValue);
       }
-    };
-  }];
-};
+    }];
+}];
+'use strict';
 
 /* exported $$AnimationProvider */
 
@@ -3356,6 +3355,7 @@ var $$AnimationProvider = ['$animateProvider', /** @this */ function($animatePro
     };
   }];
 }];
+'use strict';
 
 /**
  * @ngdoc directive
@@ -3472,6 +3472,7 @@ var ngAnimateSwapDirective = ['$animate', function($animate) {
     }
   };
 }];
+'use strict';
 
 /**
  * @ngdoc module
@@ -4239,20 +4240,20 @@ var noop;
 angular.module('ngAnimate', [], function initAngularHelpers() {
   // Access helpers from AngularJS core.
   // Do it inside a `config` block to ensure `window.angular` is available.
-  noop        = angular.noop;
-  copy        = angular.copy;
-  extend      = angular.extend;
-  jqLite      = angular.element;
-  forEach     = angular.forEach;
-  isArray     = angular.isArray;
-  isString    = angular.isString;
-  isObject    = angular.isObject;
+  noop = angular.noop;
+  copy = angular.copy;
+  extend = angular.extend;
+  jqLite = angular.element;
+  forEach = angular.forEach;
+  isArray = angular.isArray;
+  isString = angular.isString;
+  isObject = angular.isObject;
   isUndefined = angular.isUndefined;
-  isDefined   = angular.isDefined;
-  isFunction  = angular.isFunction;
-  isElement   = angular.isElement;
+  isDefined = angular.isDefined;
+  isFunction = angular.isFunction;
+  isElement = angular.isElement;
 })
-  .info({ angularVersion: '1.8.3' })
+  .info({ angularVersion: '1.8.4' })
   .directive('ngAnimateSwap', ngAnimateSwapDirective)
 
   .directive('ngAnimateChildren', $$AnimateChildrenDirective)
@@ -4267,6 +4268,5 @@ angular.module('ngAnimate', [], function initAngularHelpers() {
 
   .provider('$$animateJs', $$AnimateJsProvider)
   .provider('$$animateJsDriver', $$AnimateJsDriverProvider);
-
 
 })(window, window.angular);
