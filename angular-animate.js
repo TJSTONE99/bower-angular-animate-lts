@@ -4253,7 +4253,7 @@ angular.module('ngAnimate', [], function initAngularHelpers() {
   isFunction = angular.isFunction;
   isElement = angular.isElement;
 })
-  .info({ angularVersion: '1.8.4' })
+  .info({ angularVersion: '1.8.5' })
   .directive('ngAnimateSwap', ngAnimateSwapDirective)
 
   .directive('ngAnimateChildren', $$AnimateChildrenDirective)
